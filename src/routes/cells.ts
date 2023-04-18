@@ -1,5 +1,6 @@
 import express from 'express';
 import fs from 'fs/promises';
+import syncFs from 'fs';
 import path from 'path';
 
 interface Cell {
@@ -46,13 +47,15 @@ export const createCellsRouter = (filename: string, dir: string) => {
     try {
       // Read the file
       // Parse a list of cells out of it
-      const result = await fs.readFile(fullPath, { encoding: 'utf-8' });
-      const cells = JSON.parse(result);
-
-      // Check if user's file is empty,
-      // if is then sending default cells with some instructions
-      // else send list of cells back to browser
-      res.send(cells.length > 0 ? cells : defaultCells);
+      if (syncFs.existsSync(fullPath)) {
+        const result = await fs.readFile(fullPath, { encoding: 'utf-8' });
+        const cells = JSON.parse(result);
+        // Send list of cells back to browser
+        res.send(cells.length > 0 ? cells : defaultCells);
+      } else {
+        await fs.writeFile(fullPath, JSON.stringify(defaultCells), 'utf-8');
+        res.send(defaultCells);
+      }
     } catch (err) {
       // If read throws an error - inspect the error,
       // see if it says that the file doesn't exist
